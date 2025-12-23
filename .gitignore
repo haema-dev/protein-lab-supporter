@@ -5,4 +5,5 @@ checkpoints/
 *.h5
 .mlflow/
 __pycache__/
-REST-API/
+REST_API/
+src/outputs/
