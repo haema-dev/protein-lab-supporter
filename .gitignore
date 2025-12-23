@@ -1,0 +1,7 @@
+# .gitignore
+outputs/              ← 이 폴더는 절대 push 금지
+checkpoints/
+*.pth
+*.h5
+.mlflow/
+__pycache__/
