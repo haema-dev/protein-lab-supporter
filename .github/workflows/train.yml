@@ -1,0 +1,35 @@
+name: 01_Auto_Train_and_Register
+on:
+  push:
+    paths: ["src/**"]
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # 1. 학습 실행 및 실시간 이름 캡처
+      - name: Run Job
+        run: |
+          # [낚시] Job을 생성하자마자 Azure가 지어준 고유 이름을 JOB_NAME 변수에 담습니다.
+          JOB_NAME=$(az ml job create --file azureml/train-job.yml --query name -o tsv)
+
+          # [주입 준비] 방금 낚아챈 이름을 이번 실행의 '공용 게시판(env)'에 등록합니다.
+          echo "JOB_NAME=$JOB_NAME" >> $GITHUB_ENV
+
+          echo "시작된 Job 이름: $JOB_NAME"
+
+          # [대기] Job이 성공적으로 끝날 때까지 기다립니다.
+          az ml job show --name $JOB_NAME --wait
+
+      # 2. 캡처된 이름을 사용하여 모델 등록
+      - name: Register Custom Model
+        # 이 단계가 시작될 때, GitHub은 위에서 적어둔 JOB_NAME을 찾아 아래 자리에 주입합니다.
+        run: |
+          az ml model create  --name model \
+                              --path azureml://jobs/${{ env.JOB_NAME }}/outputs/artifacts/paths/outputs/ \
+                              --type custom_model

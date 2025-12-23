@@ -1,0 +1,15 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+code: ../src # train.py와 model.py가 있는 폴더
+command: >-
+  python train.py 
+  --data_path ${{inputs.cafa_data}}
+inputs:
+  cafa_data:
+    type: uri_folder
+    path: azureml:cafa_6@latest
+    mode: ro_mount
+compute: azureml:FOR-CAFA-6
+environment: azureml:pipline-test-env@latest
+# 이름 지정. 필요하면 지정. 없어도 됨.
+# display_name: "Cafa6-Job-Training"
