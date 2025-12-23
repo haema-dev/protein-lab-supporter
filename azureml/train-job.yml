@@ -9,17 +9,15 @@ command: >-
 inputs:
   cafa_data:
     type: uri_folder
-    path: azureml:cafa_6@latest
+    path: azureml:cafa_data:1
     mode: ro_mount
-compute: azureml:FOR-CAFA-6
-environment: azureml:pipline-test-env@latest
 
 outputs:
   model_output:
     type: uri_folder
-    mode: upload  # Job 완료 후 자동 업로드
+    mode: upload # ← Job 완료 후 자동 업로드
 
 compute: azureml:FOR-CAFA-6
-environment: azureml:AzureML-pytorch-2.0-ubuntu20.04-py38-cuda11.7-gpu@latest
+environment: azureml:pipline-test-env@latest
 # 이름 지정. 필요하면 지정. 없어도 됨.
 # display_name: "Cafa6-Job-Training"
