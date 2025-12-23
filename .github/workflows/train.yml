@@ -25,7 +25,7 @@ jobs:
             group=${{ secrets.AZURE_RESOURCE_GROUP }} \
             workspace=${{ secrets.AZURE_WORKSPACE }}
 
-      - name: Verify Azure Setup
+      - name: Run Job Verify Azure Setup
         run: |
           echo "✅ Azure connection successful"
           az version
