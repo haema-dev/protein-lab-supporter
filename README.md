@@ -17,7 +17,7 @@ Repository/
 
 ## github push 가이드
 
-### 모델 자동 등록까지
+### Job Push / Register Model
 
 #### 파일명 고정
 
@@ -117,7 +117,10 @@ display_name: "이름"
 ```
 
 `az ml model create --name model` 에서 model 을 변경해도 상관 없음. 이건 azure ml 에 등록되는 이름.<br />
-같은 걸 사용하면 version 이 업그레이드 되는 방식.
+같은 걸 사용하면 version 이 업그레이드 되는 방식.<br />
+<br />
+Job까지만 돌릴 거면 <span style="color:red;">Run Job</span> 만 주석 해제.<br />
+모델 등록까지 돌릴 거면 <span style="color:pink;">Register Model</span> 까지 주석 해제.
 
 ```yaml
 # train.yml
@@ -126,11 +129,18 @@ display_name: "이름"
 .
 .
 
-- name: Register Model
-  run: |
-    az ml model create --name model \
-      --path azureml://jobs/${{ env.JOB_NAME }}/outputs/artifacts/paths/outputs/ \
-      --type custom_model
+      - name: Run Job
+        run: |
+          JOB_NAME=$(az ml job create --file azureml/train-job.yml --query name -o tsv)
+          echo "JOB_NAME=$JOB_NAME" >> $GITHUB_ENV
+          echo "시작된 Job 이름: $JOB_NAME"
+          az ml job show --name $JOB_NAME --wait
+
+      - name: Register Model
+        run: |
+          az ml model create --name model \
+            --path azureml://jobs/${{ env.JOB_NAME }}/outputs/artifacts/paths/outputs/ \
+            --type custom_model
 ```
 
 <br /><br />
