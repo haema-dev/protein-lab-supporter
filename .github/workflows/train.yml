@@ -25,12 +25,6 @@ jobs:
             group=${{ secrets.AZURE_RESOURCE_GROUP }} \
             workspace=${{ secrets.AZURE_WORKSPACE }}
 
-      - name: Verify Azure Setup
-        run: |
-          echo "✅ Azure connection successful"
-          az version
-          az ml workspace list --max-results 1
-
       # - name: Run Job
       #   run: |
       #     JOB_NAME=$(az ml job create --file azureml/train-job.yml --query name -o tsv)

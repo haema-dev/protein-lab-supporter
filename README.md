@@ -84,6 +84,38 @@ torch.save({
 }, checkpoint_path)
 ```
 
+#### 학습 환경 변경 시
+
+`azureml:` 뒤의 이름 변경 `@latest`는 마지막 버전을 쓰겠다는 의미. 버전 명시해도 됨.<br /><br />
+ex)<br />
+cafa_6:1 -> 데이터자산 cafa_6 의 1버전<br />
+FOR-CAFA-6 -> 클러스터명<br />
+cafa6-torch-env@latest -> cafa6-torch-env 의 마지막 버전<br />
+`display_name` 는 선택적으로 추가. 미기입 시, 랜덤 이름 부여. 따옴표 필수.
+
+```yaml
+# train-job.yml
+
+.
+.
+.
+
+inputs:
+  cafa_data:
+    type: uri_folder
+    path: azureml:cafa_6:1 # 데이터자산 cafa_6 의 1버전
+    mode: ro_mount
+
+.
+.
+.
+
+
+compute: azureml:FOR-CAFA-6
+environment: azureml:cafa6-torch-env@latest
+display_name: "이름"
+```
+
 <br /><br />
 
 ### 엔드포인트 배포 (여긴 아직 신경쓸 필요 x)
