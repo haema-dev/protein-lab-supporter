@@ -17,6 +17,13 @@ Repository/
 
 ### github push 가이드
 
+파일명 고정
+
+```bash
+train.py
+model.py
+```
+
 가중치 객체 변수 `model_config` 로 고정
 
 ```python
