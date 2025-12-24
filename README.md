@@ -1,6 +1,6 @@
 # protein-lab-supporter
 
-### 폴더구조
+## 폴더구조
 
 ```bash
 Repository/
@@ -15,9 +15,11 @@ Repository/
 └─ README.md
 ```
 
-### github push 가이드
+## github push 가이드
 
-파일명 고정
+### 모델 자동 등록까지
+
+#### 파일명 고정
 
 ```bash
 train.py
@@ -25,7 +27,7 @@ model.py
 model.pth
 ```
 
-가중치 객체 변수 `model_config` 로 고정
+#### 가중치 객체 변수 `model_config` 로 고정
 
 ```python
 # train. py
@@ -50,7 +52,7 @@ model_config = ModelConfig(
 )
 ```
 
-저장할 때 디렉토리 설정 `./outputs` 로 고정
+#### 저장할 때 디렉토리 설정 `./outputs` 로 고정
 
 ```python
 # train. py
@@ -62,7 +64,7 @@ parser.add_argument('--log_interval', type=int, default=10,
                     help='로그 출력 주기 (배치 단위)')
 ```
 
-저장할때 모델명 `model.pth` 로 고정
+#### 저장할때 모델명 `model.pth` 로 고정
 
 ```python
 # train. py
@@ -81,6 +83,10 @@ torch.save({
     'args': vars(args),
 }, checkpoint_path)
 ```
+
+<br /><br />
+
+### 엔드포인트 배포 (여긴 아직 신경쓸 필요 x)
 
 score.py에서 필요한 model.py 복사
 
