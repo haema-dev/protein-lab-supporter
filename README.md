@@ -5,13 +5,13 @@
 ```bash
 Repository/
 ├─ .github/workflows/
-│    └─ train.yml  ❌ 학습자가 수정하면 안 됨
+│    └─ train.yml  ⚠️ 모델 등록 이름 변경 시에만 수정
 ├─ src/
 │    ├─ train.py ✅ 작업할 곳
 │    ├─ model.py ✅ 작업할 곳
 │    └─ score.py ❌ 학습자가 수정하면 안 됨
 ├─ azureml/
-│    └─ train-job.yml  ⚠️ display_name 만 수정 가능 (Job 이름 설정. 비워둬도 됨)
+│    └─ train-job.yml  ⚠️ 환경 변경 시에만 수정 가능
 └─ README.md
 ```
 
@@ -120,6 +120,12 @@ display_name: "이름"
 같은 걸 사용하면 version 이 업그레이드 되는 방식.
 
 ```yaml
+# train.yml
+
+.
+.
+.
+
 - name: Register Model
   run: |
     az ml model create --name model \
