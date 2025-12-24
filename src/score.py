@@ -22,7 +22,7 @@ def init():
     if not os.path.exists(model_dir):
         raise FileNotFoundError(f"Model directory not found: {model_dir}")
     
-    model_path = os.path.join(model_dir, "model.py")
+    model_path = os.path.join(model_dir, "model_config.py")
     print(f"Loading model.py from: {model_path}")
     
     spec = importlib.util.spec_from_file_location("model", model_path)
