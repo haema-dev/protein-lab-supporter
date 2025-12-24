@@ -8,16 +8,16 @@ import importlib.util
 def init():
     global mil_model, device, model_dir
     
-    model_dir = os.getenv("AZUREML_MODEL_DIR", "./models")
+    model_dir = os.getenv("AZUREML_MODEL_DIR", "./outputs")
     
     print(f"🔍 Model directory: {model_dir}")
     print(f"📁 Files: {os.listdir(model_dir)}")
     
-    potential_models_dir = os.path.join(model_dir, "models")
+    potential_models_dir = os.path.join(model_dir, "outputs")
     if os.path.exists(potential_models_dir):
         model_dir = potential_models_dir
-        print(f"📁 Found 'models' subdirectory, using: {model_dir}")
-        print(f"📁 Files in models: {os.listdir(model_dir)}")
+        print(f"📁 Found 'outputs' subdirectory, using: {model_dir}")
+        print(f"📁 Files in outputs: {os.listdir(model_dir)}")
     
     if not os.path.exists(model_dir):
         raise FileNotFoundError(f"Model directory not found: {model_dir}")
