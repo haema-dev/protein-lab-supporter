@@ -22,6 +22,7 @@ Repository/
 ```bash
 train.py
 model.py
+model.pth
 ```
 
 가중치 객체 변수 `model_config` 로 고정
@@ -49,6 +50,18 @@ model_config = ModelConfig(
 )
 ```
 
+저장할 때 디렉토리 설정 `./outputs` 로 고정
+
+```python
+# train. py
+
+# ==================== 출력 ====================
+parser.add_argument('--output_dir', type=str, default='./outputs',
+                    help='모델 저장 디렉토리')
+parser.add_argument('--log_interval', type=int, default=10,
+                    help='로그 출력 주기 (배치 단위)')
+```
+
 저장할때 모델명 `model.pth` 로 고정
 
 ```python
@@ -67,4 +80,16 @@ torch.save({
     'training_config': training_config.to_dict(),
     'args': vars(args),
 }, checkpoint_path)
+```
+
+score.py에서 필요한 model.py 복사
+
+```python
+# train. py
+
+# torch.save 바로 아래에 train. py ✅ 추가
+model_py_path = Path(__file__).parent / 'model.py'
+if model_py_path.exists():
+    shutil.copy(str(model_py_path), str(output_dir / 'model.py'))
+    print(f"✅ model.py copied to {output_dir / 'model.py'}")
 ```
