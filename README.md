@@ -116,6 +116,17 @@ environment: azureml:cafa6-torch-env@latest
 display_name: "이름"
 ```
 
+`az ml model create --name model` 에서 model 을 변경해도 상관 없음. 이건 azure ml 에 등록되는 이름.<br />
+같은 걸 사용하면 version 이 업그레이드 되는 방식.
+
+```yaml
+- name: Register Model
+  run: |
+    az ml model create --name model \
+      --path azureml://jobs/${{ env.JOB_NAME }}/outputs/artifacts/paths/outputs/ \
+      --type custom_model
+```
+
 <br /><br />
 
 ### 엔드포인트 배포 (여긴 아직 신경쓸 필요 x)
