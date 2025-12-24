@@ -15,7 +15,7 @@ Repository/
 └─ README.md
 ```
 
-### 폴더구조
+### github push 가이드
 
 가중치 객체 변수 `model_config` 로 고정
 
