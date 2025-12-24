@@ -9,7 +9,7 @@ command: >-
 inputs:
   cafa_data:
     type: uri_folder
-    path: azureml:cafa_data:1
+    path: azureml:cafa_6@latest
     mode: ro_mount
 
 outputs:

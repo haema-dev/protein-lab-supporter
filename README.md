@@ -103,7 +103,7 @@ cafa6-torch-env@latest -> cafa6-torch-env 의 마지막 버전<br />
 inputs:
   cafa_data:
     type: uri_folder
-    path: azureml:cafa_6:1 # 데이터자산 cafa_6 의 1버전
+    path: azureml:cafa_6@latest
     mode: ro_mount
 
 .
