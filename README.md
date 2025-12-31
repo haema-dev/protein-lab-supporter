@@ -32,7 +32,6 @@ index.py
 
 ```python
 # ================== 1. config 세팅 ==================
-# Azure ML 경로 설정
 .
 .
 .
@@ -50,14 +49,14 @@ parser.add_argument('--output_dir', type=str, default='./outputs', help='결과 
 
 ```python
 # ================== 1. config 세팅 ==================
-    # Azure ML 경로 설정
-    parser.add_argument('--data_path', type=str, required=True, help='dataset 폴더 경로')
-    parser.add_argument('--output_dir', type=str, default='./outputs', help='결과 저장 경로')
-    parser.add_argument('--threads', type=int, default=8)
-    # === 필요하면 주석해제 후 사용하기
-    # parser.add_argument('--train_batch_size', type=int, default=1024, help='Head 학습 시 배치 크기 (H5 기반이라 크게 가능)')
-    # parser.add_argument('--predict_batch_size', type=int, default=2048, help='추론 시 배치 크기')
-    # parser.add_argument('--alpha', type=float, default=0.6, help='ESM2 가중치')
+# Azure ML 경로 설정
+parser.add_argument('--data_path', type=str, required=True, help='dataset 폴더 경로')
+parser.add_argument('--output_dir', type=str, default='./outputs', help='결과 저장 경로')
+parser.add_argument('--threads', type=int, default=8)
+# === 필요하면 주석해제 후 사용하기
+# parser.add_argument('--train_batch_size', type=int, default=1024, help='Head 학습 시 배치 크기 (H5 기반이라 크게 가능)')
+# parser.add_argument('--predict_batch_size', type=int, default=2048, help='추론 시 배치 크기')
+# parser.add_argument('--alpha', type=float, default=0.6, help='ESM2 가중치')
 ```
 
 - train-job.yml
