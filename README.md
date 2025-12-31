@@ -7,9 +7,9 @@ Repository/
 ├─ .github/workflows/
 │    └─ train.yml  ⚠️ 모델 등록 이름 변경 시에만 수정
 ├─ src/
-│    ├─ train.py ✅ 작업할 곳
-│    ├─ model.py ✅ 작업할 곳
-│    └─ score.py ❌ 학습자가 수정하면 안 됨
+│    ├─ ensemble.py ✅ ensemble 파이프라인 파일
+│    ├─ index.py    ✅ 최초 시작 파일
+│    └─ score.py ❌ 수정하면 안 됨 (실시간 엔드포인트 배포 시에만 사용)
 ├─ azureml/
 │    └─ train-job.yml  ⚠️ 환경 변경 시에만 수정 가능
 └─ README.md
@@ -22,9 +22,135 @@ Repository/
 #### 파일명 고정
 
 ```bash
-train.py
-model.py
-model.pth
+ensemble.py
+index.py
+```
+
+#### 저장할 때 디렉토리 설정 `./outputs` 로 고정
+
+- index. py
+
+```python
+# ================== 1. config 세팅 ==================
+# Azure ML 경로 설정
+.
+.
+.
+
+parser.add_argument('--output_dir', type=str, default='./outputs', help='결과 저장 경로')
+
+.
+.
+.
+```
+
+#### config 파라미터 필요하면 추가
+
+- index.py
+
+```python
+# ================== 1. config 세팅 ==================
+    # Azure ML 경로 설정
+    parser.add_argument('--data_path', type=str, required=True, help='dataset 폴더 경로')
+    parser.add_argument('--output_dir', type=str, default='./outputs', help='결과 저장 경로')
+    parser.add_argument('--threads', type=int, default=8)
+    # === 필요하면 주석해제 후 사용하기
+    # parser.add_argument('--train_batch_size', type=int, default=1024, help='Head 학습 시 배치 크기 (H5 기반이라 크게 가능)')
+    # parser.add_argument('--predict_batch_size', type=int, default=2048, help='추론 시 배치 크기')
+    # parser.add_argument('--alpha', type=float, default=0.6, help='ESM2 가중치')
+```
+
+- train-job.yml
+
+```yaml
+.
+.
+.
+
+command: >-
+  python input.py
+    --data_path ${{inputs.cafa_data}}
+    --output_dir ${{outputs.model_output}}
+    --batch_size 1 \
+    --alpha 0.6 \
+    --knn_weight 0.3 \
+
+.
+.
+.
+```
+
+#### 학습 환경 변경 시
+
+- train-job.yml
+
+`azureml:` 뒤의 이름 변경 `@latest`는 마지막 버전을 쓰겠다는 의미. 버전 명시해도 됨.<br /><br />
+ex)<br />
+cafa_6:1 -> 데이터자산 cafa_6 의 1버전<br />
+FOR-CAFA-6 -> 클러스터명<br />
+cafa6-torch-env@latest -> cafa6-torch-env 의 마지막 버전<br />
+`display_name` 는 선택적으로 추가. 미기입 시, 랜덤 이름 부여. 따옴표 필수.
+
+```yaml
+.
+.
+.
+
+inputs:
+  cafa_data:
+    type: uri_folder
+    path: azureml:cafa_6@latest
+    mode: ro_mount
+.
+.
+.
+
+compute: azureml:FOR-CAFA-6
+environment: azureml:cafa6-torch-env@latest
+display_name: "이름"
+```
+
+- train.yml
+
+`az ml model create --name model` 에서 model 을 변경해도 상관 없음. 이건 azure ml 에 등록되는 이름.<br />
+같은 걸 사용하면 version 이 업그레이드 되는 방식.<br />
+<br />
+Job까지만 돌릴 거면 <span style="color:red;">Run Job</span> 만 주석 해제.<br />
+모델 등록까지 돌릴 거면 <span style="color:pink;">Register Model</span> 까지 주석 해제.
+
+```yaml
+.
+.
+.
+
+      - name: Run Job
+        run: |
+          JOB_NAME=$(az ml job create --file azureml/train-job.yml --query name -o tsv)
+          echo "JOB_NAME=$JOB_NAME" >> $GITHUB_ENV
+          echo "시작된 Job 이름: $JOB_NAME"
+          az ml job show --name $JOB_NAME --wait
+
+      # - name: Register Model
+      #   run: |
+      #     az ml model create --name model \
+      #       --path azureml://jobs/${{ env.JOB_NAME }}/outputs/artifacts/paths/outputs/ \
+      #       --type custom_model
+```
+
+<br /><br />
+
+### 엔드포인트 배포 (여긴 아직 신경쓸 필요 x)
+
+score.py에서 필요한 model.py 복사
+
+```python
+# train. py
+
+# torch.save 바로 아래에 train. py ✅ 추가
+model_py_path = Path(__file__).parent / 'model.py'
+if model_py_path.exists():
+    shutil.copy(str(model_py_path), str(output_dir / 'model.py'))
+    print(f"✅ model.py copied to {output_dir / 'model.py'}")
 ```
 
 #### 가중치 객체 변수 `model_config` 로 고정
@@ -50,111 +176,4 @@ model_config = ModelConfig(
     use_batch_norm=True,
     activation='relu'
 )
-```
-
-#### 저장할 때 디렉토리 설정 `./outputs` 로 고정
-
-```python
-# train. py
-
-# ==================== 출력 ====================
-parser.add_argument('--output_dir', type=str, default='./outputs',
-                    help='모델 저장 디렉토리')
-parser.add_argument('--log_interval', type=int, default=10,
-                    help='로그 출력 주기 (배치 단위)')
-```
-
-#### 저장할때 모델명 `model.pth` 로 고정
-
-```python
-# train. py
-
-# Checkpoint 저장
-checkpoint_path = output_dir / 'model.pth'
-torch.save({
-    'epoch': epoch,
-    'model_state_dict': model.state_dict(),
-    'optimizer_state_dict': optimizer.state_dict(),
-    'scheduler_state_dict': scheduler.state_dict(),
-    'train_loss': train_loss,
-    'val_loss': val_loss,
-    'model_config': model_config.to_dict(),
-    'training_config': training_config.to_dict(),
-    'args': vars(args),
-}, checkpoint_path)
-```
-
-#### 학습 환경 변경 시
-
-`azureml:` 뒤의 이름 변경 `@latest`는 마지막 버전을 쓰겠다는 의미. 버전 명시해도 됨.<br /><br />
-ex)<br />
-cafa_6:1 -> 데이터자산 cafa_6 의 1버전<br />
-FOR-CAFA-6 -> 클러스터명<br />
-cafa6-torch-env@latest -> cafa6-torch-env 의 마지막 버전<br />
-`display_name` 는 선택적으로 추가. 미기입 시, 랜덤 이름 부여. 따옴표 필수.
-
-```yaml
-# train-job.yml
-
-.
-.
-.
-
-inputs:
-  cafa_data:
-    type: uri_folder
-    path: azureml:cafa_6@latest
-    mode: ro_mount
-
-.
-.
-.
-
-
-compute: azureml:FOR-CAFA-6
-environment: azureml:cafa6-torch-env@latest
-display_name: "이름"
-```
-
-`az ml model create --name model` 에서 model 을 변경해도 상관 없음. 이건 azure ml 에 등록되는 이름.<br />
-같은 걸 사용하면 version 이 업그레이드 되는 방식.<br />
-<br />
-Job까지만 돌릴 거면 <span style="color:red;">Run Job</span> 만 주석 해제.<br />
-모델 등록까지 돌릴 거면 <span style="color:pink;">Register Model</span> 까지 주석 해제.
-
-```yaml
-# train.yml
-
-.
-.
-.
-
-      - name: Run Job
-        run: |
-          JOB_NAME=$(az ml job create --file azureml/train-job.yml --query name -o tsv)
-          echo "JOB_NAME=$JOB_NAME" >> $GITHUB_ENV
-          echo "시작된 Job 이름: $JOB_NAME"
-          az ml job show --name $JOB_NAME --wait
-
-      - name: Register Model
-        run: |
-          az ml model create --name model \
-            --path azureml://jobs/${{ env.JOB_NAME }}/outputs/artifacts/paths/outputs/ \
-            --type custom_model
-```
-
-<br /><br />
-
-### 엔드포인트 배포 (여긴 아직 신경쓸 필요 x)
-
-score.py에서 필요한 model.py 복사
-
-```python
-# train. py
-
-# torch.save 바로 아래에 train. py ✅ 추가
-model_py_path = Path(__file__).parent / 'model.py'
-if model_py_path.exists():
-    shutil.copy(str(model_py_path), str(output_dir / 'model.py'))
-    print(f"✅ model.py copied to {output_dir / 'model.py'}")
 ```

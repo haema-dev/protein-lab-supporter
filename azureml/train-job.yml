@@ -2,14 +2,15 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
 type: command
 code: ../src
 command: >-
-  python train.py
-    --data_path ${{inputs.cafa_data}}
+  python input.py
+    --data_path ${{inputs.cafa_data}} 
+    --threads 32 
     --output_dir ${{outputs.model_output}}
 
 inputs:
   cafa_data:
     type: uri_folder
-    path: azureml:cafa_6@latest
+    path: azureml:diamond_ensenble@latest
     mode: ro_mount
 
 outputs:
@@ -18,7 +19,7 @@ outputs:
     # Job 완료 후 자동 업로드
     mode: upload
 
-compute: azureml:FOR-CAFA-6
-environment: azureml:cafa6-torch-env@latest
+compute: azureml:cpu-32core-cluster
+environment: azureml:ensemble-env@latest
 # 이름 지정. 필요하면 지정. 없어도 됨.
 # display_name: "Cafa6-Job-Training"
