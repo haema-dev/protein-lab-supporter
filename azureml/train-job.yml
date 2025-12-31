@@ -1,6 +1,6 @@
 $schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
 type: command
-code: ../src
+code: .
 command: >-
   python input.py \
     --data_path ${{inputs.data}} \
