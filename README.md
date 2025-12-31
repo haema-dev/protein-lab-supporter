@@ -89,6 +89,7 @@ cafa_6:1 -> 데이터자산 cafa_6 의 1버전<br />
 FOR-CAFA-6 -> 클러스터명<br />
 cafa6-torch-env@latest -> cafa6-torch-env 의 마지막 버전<br />
 `display_name` 는 선택적으로 추가. 미기입 시, 랜덤 이름 부여. 따옴표 필수.
+`experiment_name` 는 선택적으로 추가. 미기입 시, `protein-lab-supporter` 로 고정. 따옴표 필수.
 
 ```yaml
 .
@@ -106,13 +107,14 @@ inputs:
 
 compute: azureml:FOR-CAFA-6
 environment: azureml:cafa6-torch-env@latest
-display_name: "이름"
+# Job 실험명과 task 명 지정. 미기재 해도 됨.
+experiment_name: "실험명"
+display_name: "작업명"
 ```
 
 - train.yml
 
 Job까지만 돌릴 거면 <span style="color:red;">Run Job</span> 만 주석 해제.<br />
-`--experiment-name "Diamond GitHub"` 에서 따옴표 안의 이름을 변경 하여 실험명 지정 가능.<br />
 <br />
 모델 등록까지 돌릴 거면 <span style="color:pink;">Register Model</span> 까지 주석 해제.<br />
 `az ml model create --name model` 에서 model 을 변경해도 상관 없음. 이건 azure ml 에 등록되는 이름.<br />
@@ -125,11 +127,13 @@ Job까지만 돌릴 거면 <span style="color:red;">Run Job</span> 만 주석 �
 
       - name: Run Job
         run: |
-          JOB_NAME=$(az ml job create --file azureml/train-job.yml \
-            --experiment-name "Diamond GitHub" \
-            --query name -o tsv)
+          JOB_NAME=$(az ml job create --file azureml/train-job.yml --query name -o tsv)
+
           echo "JOB_NAME=$JOB_NAME" >> $GITHUB_ENV
           echo "✅ Job 제출 완료!"
+          echo "Experiment: Diamond_GitHub"
+          echo "Job Name: $JOB_NAME"
+
 
       # - name: Register Model
       #   run: |

@@ -21,5 +21,6 @@ outputs:
 
 compute: azureml:cpu-32core-cluster
 environment: azureml:ensemble-env@latest
-# Job 실험의 task 명 지정. 미기재 해도 됨.
-# display_name: "Diamond Github"
+# Job 실험명과 task 명 지정. 미기재 해도 됨.
+experiment_name: "Diamond Github"
+display_name: "Diamond Github"
