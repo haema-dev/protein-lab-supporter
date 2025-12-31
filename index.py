@@ -10,7 +10,7 @@ import glob
 import math
 
 # [1] 모듈 로드 (기존 ensemble.py에 DiamondESM2Processor가 있다고 가정)
-from ensemble import DiamondESM2Processor
+from src.ensemble import DiamondESM2Processor
 
 
 def convert_size(size_bytes):
