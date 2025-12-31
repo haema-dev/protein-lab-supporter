@@ -85,9 +85,9 @@ command: >-
 
 `azureml:` 뒤의 이름 변경 `@latest`는 마지막 버전을 쓰겠다는 의미. 버전 명시해도 됨.<br /><br />
 ex)<br />
-cafa_6:1 -> 데이터자산 cafa_6 의 1버전<br />
+diamond_ensenble:1 -> 데이터자산 diamond_ensenble 의 1버전<br />
 FOR-CAFA-6 -> 클러스터명<br />
-cafa6-torch-env@latest -> cafa6-torch-env 의 마지막 버전<br />
+ensemble-env@latest -> cafa6-torch-env 의 마지막 버전<br />
 `display_name` 는 선택적으로 추가. 미기입 시, 랜덤 이름 부여. 따옴표 필수.
 `experiment_name` 는 선택적으로 추가. 미기입 시, `protein-lab-supporter` 로 고정. 따옴표 필수.
 
@@ -97,16 +97,16 @@ cafa6-torch-env@latest -> cafa6-torch-env 의 마지막 버전<br />
 .
 
 inputs:
-  cafa_data:
+  data:
     type: uri_folder
-    path: azureml:cafa_6@latest
+    path: azureml:diamond_ensenble@latest
     mode: ro_mount
 .
 .
 .
 
-compute: azureml:FOR-CAFA-6
-environment: azureml:cafa6-torch-env@latest
+compute: azureml:cpu-32core-cluster
+environment: azureml:ensemble-env@latest
 # Job 실험명과 task 명 지정. 미기재 해도 됨.
 experiment_name: "실험명"
 display_name: "작업명"
@@ -131,9 +131,6 @@ Job까지만 돌릴 거면 <span style="color:red;">Run Job</span> 만 주석 �
 
           echo "JOB_NAME=$JOB_NAME" >> $GITHUB_ENV
           echo "✅ Job 제출 완료!"
-          echo "Experiment: Diamond_GitHub"
-          echo "Job Name: $JOB_NAME"
-
 
       # - name: Register Model
       #   run: |

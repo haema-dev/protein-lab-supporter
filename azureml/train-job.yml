@@ -2,19 +2,19 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
 type: command
 code: ../src
 command: >-
-  python input.py
-    --data_path ${{inputs.cafa_data}} 
-    --threads 24
-    --output_dir ${{outputs.model_output}}
+  python input.py \
+    --data_path ${{inputs.data}} \
+    --threads 24 \
+    --output_dir ${{outputs.result}}
 
 inputs:
-  cafa_data:
+  data:
     type: uri_folder
     path: azureml:diamond_ensenble@latest
     mode: ro_mount
 
 outputs:
-  model_output:
+  result:
     type: uri_folder
     # Job 완료 후 자동 업로드
     mode: upload
