@@ -30,10 +30,11 @@ jobs:
 
       - name: Run Job
         run: |
-          JOB_NAME=$(az ml job create --file azureml/train-job.yml --query name -o tsv)
+          JOB_NAME=$(az ml job create --file azureml/train-job.yml \
+            --experiment-name "Diamond GitHub" \
+            --query name -o tsv)
           echo "JOB_NAME=$JOB_NAME" >> $GITHUB_ENV
-          echo "시작된 Job 이름: $JOB_NAME"
-          az ml job stream --name $JOB_NAME
+          echo "✅ Job 제출 완료!"
 
       # - name: Register Model
       #   run: |

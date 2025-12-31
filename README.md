@@ -111,11 +111,12 @@ display_name: "이름"
 
 - train.yml
 
+Job까지만 돌릴 거면 <span style="color:red;">Run Job</span> 만 주석 해제.<br />
+`--experiment-name "Diamond GitHub"` 에서 따옴표 안의 이름을 변경 하여 실험명 지정 가능.<br />
+<br />
+모델 등록까지 돌릴 거면 <span style="color:pink;">Register Model</span> 까지 주석 해제.<br />
 `az ml model create --name model` 에서 model 을 변경해도 상관 없음. 이건 azure ml 에 등록되는 이름.<br />
 같은 걸 사용하면 version 이 업그레이드 되는 방식.<br />
-<br />
-Job까지만 돌릴 거면 <span style="color:red;">Run Job</span> 만 주석 해제.<br />
-모델 등록까지 돌릴 거면 <span style="color:pink;">Register Model</span> 까지 주석 해제.
 
 ```yaml
 .
@@ -124,10 +125,11 @@ Job까지만 돌릴 거면 <span style="color:red;">Run Job</span> 만 주석 �
 
       - name: Run Job
         run: |
-          JOB_NAME=$(az ml job create --file azureml/train-job.yml --query name -o tsv)
+          JOB_NAME=$(az ml job create --file azureml/train-job.yml \
+            --experiment-name "Diamond GitHub" \
+            --query name -o tsv)
           echo "JOB_NAME=$JOB_NAME" >> $GITHUB_ENV
-          echo "시작된 Job 이름: $JOB_NAME"
-          az ml job show --name $JOB_NAME --wait
+          echo "✅ Job 제출 완료!"
 
       # - name: Register Model
       #   run: |
