@@ -33,7 +33,7 @@ jobs:
           JOB_NAME=$(az ml job create --file azureml/train-job.yml --query name -o tsv)
           echo "JOB_NAME=$JOB_NAME" >> $GITHUB_ENV
           echo "시작된 Job 이름: $JOB_NAME"
-          az ml job show --name $JOB_NAME --wait
+          az ml job stream --name $JOB_NAME
 
       # - name: Register Model
       #   run: |

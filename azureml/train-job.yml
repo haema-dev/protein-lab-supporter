@@ -4,7 +4,7 @@ code: ../src
 command: >-
   python input.py
     --data_path ${{inputs.cafa_data}} 
-    --threads 32 
+    --threads 24
     --output_dir ${{outputs.model_output}}
 
 inputs:
@@ -22,4 +22,4 @@ outputs:
 compute: azureml:cpu-32core-cluster
 environment: azureml:ensemble-env@latest
 # 이름 지정. 필요하면 지정. 없어도 됨.
-# display_name: "Cafa6-Job-Training"
+display_name: "Diamond Github"
