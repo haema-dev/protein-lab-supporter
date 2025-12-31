@@ -25,12 +25,12 @@ jobs:
             group=${{ secrets.AZURE_RESOURCE_GROUP }} \
             workspace=${{ secrets.AZURE_WORKSPACE }}
 
-      # - name: Run Job
-      #   run: |
-      #     JOB_NAME=$(az ml job create --file azureml/train-job.yml --query name -o tsv)
-      #     echo "JOB_NAME=$JOB_NAME" >> $GITHUB_ENV
-      #     echo "시작된 Job 이름: $JOB_NAME"
-      #     az ml job show --name $JOB_NAME --wait
+      - name: Run Job
+        run: |
+          JOB_NAME=$(az ml job create --file azureml/train-job.yml --query name -o tsv)
+          echo "JOB_NAME=$JOB_NAME" >> $GITHUB_ENV
+          echo "시작된 Job 이름: $JOB_NAME"
+          az ml job show --name $JOB_NAME --wait
 
       # - name: Register Model
       #   run: |
