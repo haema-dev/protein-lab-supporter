@@ -2,7 +2,10 @@ name: 01_Auto_Train_and_Register
 
 on:
   push:
-    paths: ["src/**"]
+    paths:
+      - "src/**"
+      - ".github/workflows/**" # 워크플로우 파일 수정 시에도 실행
+      - "azureml/**" # job 설정 파일 수정 시에도 실행
 
 jobs:
   train:
