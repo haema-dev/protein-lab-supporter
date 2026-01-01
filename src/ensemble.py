@@ -107,14 +107,6 @@ class DiamondESM2Processor:
                     "org_name": org_name,    # Homo sapiens (종 이름)
                     "go_terms": sorted(list(expanded))
                 }
-
-                ### 부모전파 X
-                data_dict = {
-                    "protein_id": acc_id,    # 질문에서 말씀하신 대로 단백질 ID(A0A0C5B5G6)를 넣음
-                    "org_id": org_id,        # 9606 (Taxonomy ID)
-                    "org_name": org_name,    # Homo sapiens (종 이름)
-                    "go_terms": sorted(list(terms))
-                }
                 
                 # JSON 직렬화
                 json_value = json.dumps(data_dict, ensure_ascii=False)
@@ -134,22 +126,22 @@ class DiamondESM2Processor:
                "-p", str(self.config['threads']), "--max-target-seqs", "1", "--outfmt", "6"]
         subprocess.run(cmd, check=True)
 
-    def final_ensemble(self, result_hits, lmdb_path, esm_preds=None, label_list_path=None):
+    def final_ensemble(self, dmnd_hits, lmdb_path, esm_preds=None, label_list_path=None):
         from collections import defaultdict
 
         columns = ['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 
                 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore']
         
         try:
-            dmnd_df = pd.read_csv(result_hits, sep='\t', names=columns)
+            dmnd_df = pd.read_csv(dmnd_hits, sep='\t', names=columns)
             initial_count = len(dmnd_df)
             
             # 1. 필터링: CAFA 기준 및 노이즈 제거를 위한 최적 임계값
             dmnd_df = dmnd_df[
-                (dmnd_df['pident'] >= 40) &    # 서열 유사도 40% 이상
-                (dmnd_df['evalue'] <= 1e-5) &
-                (dmnd_df['bitscore'] >= 50) &
-                (dmnd_df['length'] >= 50)
+                (dmnd_df['pident'] >= 95) &    # 서열 유사도 95% 이상
+                (dmnd_df['evalue'] <= 1e-10) &
+                (dmnd_df['bitscore'] >= 100) &
+                (dmnd_df['length'] >= 80)
             ]
             
             logger.info(f"Filtering: {initial_count} -> {len(dmnd_df)} hits")

@@ -9,7 +9,15 @@ __pycache__/
 REST_API/
 src/outputs/
 src/index.ipynb
+
 cafa_eval_scoreset/
+
 src/score.py
-src/interpro_submission_8.tsv
-src/submission_top500_1231_1PM.tsv
+
+
+src/h5/
+src/ontology/
+src/tsv/
+src/validation/
+src/interpro/
+src/foldseek/

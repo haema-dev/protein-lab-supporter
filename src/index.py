@@ -74,7 +74,8 @@ def main():
     # Azure ML 경로 설정
     parser.add_argument('--data_path', type=str, required=True, help='dataset 폴더 경로')
     parser.add_argument('--output_dir', type=str, default='./outputs', help='결과 저장 경로')
-    parser.add_argument('--threads', type=int, default=8)
+    parser.add_argument('--threads', type=int, default=14)
+    parser.add_argument('--fs_score', type=int, default=0.99)
     # === 필요하면 주석해제 후 사용하기
     # parser.add_argument('--train_batch_size', type=int, default=1024, help='Head 학습 시 배치 크기 (H5 기반이라 크게 가능)')
     # parser.add_argument('--predict_batch_size', type=int, default=2048, help='추론 시 배치 크기')
@@ -107,14 +108,18 @@ def main():
 
     # 1. 디렉토리 설정
     # [ Input dataset folder structure ]
-    # ─┬─ fasta
-    #  ├─ h5
-    #  ├─ ontology
-    #  ├─ tsv
-    #  └─ validation
+    # ─┬─ fasta (.fasta) :  large_learning_superset Data
+    #  ├─ foldseek (.tsv)
+    #  ├─ h5 (.h5) :  esm2-3b float16 임베딩 데이터
+    #  ├─ interpro (.tsv)
+    #  ├─ ontology (.npz / .pkl) :  부모전파 파일
+    #  ├─ tsv (.tsv) :  large_learning_superset Data
+    #  └─ validation :  채점 데이터
     FASTA_DIR = os.path.join(DATASET_DIR, "fasta")
+    FOLDSEEK_DIR = os.path.join(DATASET_DIR, "foldseek")
     TSV_DIR = os.path.join(DATASET_DIR, "tsv")
     H5_DIR = os.path.join(DATASET_DIR, "h5")
+    INTERPRO_DIR = os.path.join(DATASET_DIR, "interpro")
     ONTOLOGY_DIR = os.path.join(DATASET_DIR, "ontology")
     VALID_DIR = os.path.join(DATASET_DIR, "validation")
 
@@ -146,6 +151,7 @@ def main():
     config = {
         'threads': args.threads,
         'output_dir': OUTPUT_DIR,
+        'fs_score': args.fs_score,
         # 'train_batch_size': args.train_batch_size,
         # 'batch_size': args.predict_batch_size, 
         # 'alpha': args.alpha,
@@ -180,7 +186,7 @@ def main():
         
         # Step 3: LMDB 구축 (go_mapping 활용)
         lmdb_path = os.path.join(MODEL_DIR, "train_lmdb")
-        dmnd_db = os.path.join(MODEL_DIR, "cafa6_train.dmnd")
+        dmnd_db = os.path.join(MODEL_DIR, "diamond_db.dmnd")
         proc.build_diamond_lmdb(
             TRAIN_FASTA,
             go_mapping,
@@ -190,6 +196,9 @@ def main():
             PARENTS_NPZ
         )
         logger.success("✅ DiamondDB + LMDB 매핑저장 성공!")
+
+        # FS_DB = os.path.join(MODEL_DIR, "foldseek")
+        # logger.success("✅ DiamondDB + LMDB 매핑저장 성공!")
         
     except Exception as e:
         logger.error(f"❌ DiamondDB + LMDB 매핑저장 중 오류 발생: {e}")
@@ -200,17 +209,14 @@ def main():
     
     ### 학습 로직 수행
     
-    logger.info("⏩ 학습 단계 건너뛰기 (기존 모델 사용)")
-    label_pkl = os.path.join(MODEL_DIR, "labels.pkl")
-    lmdb_path = os.path.join(MODEL_DIR, "train_lmdb")
-    dmnd_db = os.path.join(MODEL_DIR, "cafa6_train.dmnd")
+    logger.info("⏩ 학습 단계 건너뛰기")
 
     # ================== 4. [Phase 3] 추론 (Inference) ==================
     logger.info("🚀 Phase 2: 추론 시작")
     try:
         # 1. Diamond 검색
-        hits_tsv = os.path.join(OUTPUT_DIR, "test_hits.tsv")
-        proc.run_diamond_search(TEST_FASTA, dmnd_db, hits_tsv)
+        dmnd_hits = os.path.join(OUTPUT_DIR, "dmnd_hits.tsv")
+        proc.run_diamond_search(TEST_FASTA, dmnd_db, dmnd_hits)
         
         esm_preds = None
         
@@ -220,10 +226,10 @@ def main():
         
         # 3. 최종 앙상블
         final_df = proc.final_ensemble(
-            result_hits=hits_tsv,
+            dmnd_hits=dmnd_hits,
             lmdb_path=lmdb_path,
-            esm_preds=esm_preds,
-            label_list_path=label_pkl
+            # interpro_path=FOLDSEEK_DIR + 'interpro_submission_8.tsv',
+            # submission_path=INTERPRO_DIR + 'submission_top500_1231_1PM.tsv'
         )
         
         # 4. 결과 저장
@@ -242,7 +248,7 @@ def main():
         logger.info("🔬 Phase 3: Ablation Study & Evaluation")
         try:
             # Diamond-only
-            proc.evaluate_diamond_only(hits_tsv, lmdb_path, label_pkl)
+            # proc.evaluate_diamond_only(dmnd_hits, lmdb_path, label_pkl)
 
             ### 필요하면 더 추가하면 됨
 

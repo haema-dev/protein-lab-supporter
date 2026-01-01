@@ -5,7 +5,8 @@ command: >-
   python index.py \
     --data_path ${{inputs.data}} \
     --threads 14 \
-    --output_dir ${{outputs.result}}
+    --output_dir ${{outputs.result}} \
+    --fs_score 0.99
 
 inputs:
   data:
