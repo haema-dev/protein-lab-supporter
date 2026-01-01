@@ -248,16 +248,14 @@ def main():
     if VALIDATION_GT is not None and os.path.exists(VALIDATION_GT):
         logger.info("🔬 Phase 3: Ablation Study & Evaluation")
         try:
-            # Diamond-only
-            # proc.evaluate_diamond_only(dmnd_hits, lmdb_path, label_pkl)
 
-            ### 필요하면 더 추가하면 됨
+            ### 필요하면 추가하면 됨
 
             logger.success("✅ 평가 완료!")
         except Exception as e:
             logger.warning(f"⚠️ 평가 단계 실패: {e}")
     else:
-        logger.warning("⚠️ Ground Truth 파일을 찾을 수 없습니다. 평가 스킵")
+        logger.warning("⚠️ 파일을 찾을 수 없습니다. 평가 스킵")
 
     logger.success("🏁 CAFA6 통합 파이프라인 종료!")
 
