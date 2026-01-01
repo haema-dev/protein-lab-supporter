@@ -143,7 +143,7 @@ class DiamondESM2Processor:
             initial_count = len(dmnd_df)
             
             # ✅ 앙상블용 고정밀도 필터
-            pident_threshold = 50
+            pident_threshold = 90
             dmnd_df = dmnd_df[
                 (dmnd_df['pident'] >= pident_threshold) &  # 조정 가능 (40, 50, 60)
                 (dmnd_df['evalue'] <= 1e-10) &             # 극도로 엄격
