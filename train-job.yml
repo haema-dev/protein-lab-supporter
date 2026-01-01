@@ -2,7 +2,7 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
 type: command
 code: src/
 command: >-
-  python src/input.py \
+  python input.py \
     --data_path ${{inputs.data}} \
     --threads 10 \
     --output_dir ${{outputs.result}}
