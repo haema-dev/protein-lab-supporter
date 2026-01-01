@@ -1,10 +1,10 @@
 $schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
 type: command
-code: ../
+code: src/
 command: >-
-  python input.py \
+  python src/input.py \
     --data_path ${{inputs.data}} \
-    --threads 24 \
+    --threads 10 \
     --output_dir ${{outputs.result}}
 
 inputs:
@@ -19,7 +19,7 @@ outputs:
     # Job 완료 후 자동 업로드
     mode: upload
 
-compute: azureml:cpu-32core-cluster
+compute: azureml:github
 environment: azureml:ensemble-env@latest
 # Job 실험명과 task 명 지정. 미기재 해도 됨.
 experiment_name: Diamond_Github

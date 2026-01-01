@@ -10,7 +10,7 @@ import glob
 import math
 
 # [1] 모듈 로드 (기존 ensemble.py에 DiamondESM2Processor가 있다고 가정)
-from src.ensemble import DiamondESM2Processor
+from ensemble import DiamondESM2Processor
 
 
 def convert_size(size_bytes):
@@ -106,6 +106,12 @@ def main():
     logger.info(f"   - Log Save Dir: {os.path.abspath(LOG_DIR)}")
 
     # 1. 디렉토리 설정
+    # [ Input dataset folder structure ]
+    # ─┬─ fasta
+    #  ├─ h5
+    #  ├─ ontology
+    #  ├─ tsv
+    #  └─ validation
     FASTA_DIR = os.path.join(DATASET_DIR, "fasta")
     TSV_DIR = os.path.join(DATASET_DIR, "tsv")
     H5_DIR = os.path.join(DATASET_DIR, "h5")
@@ -153,7 +159,7 @@ def main():
     try:
         # Step 1: GO Mapping 로드
         go_mapping = proc.load_go_mapping(TRAIN_GO_TSV)
-        logger.success("✅ {len(go_mapping)}개 단백질-GO 매핑 로드!")
+        logger.success(f"✅ {len(go_mapping)}개 단백질-GO 매핑 로드!")
         
         # Step 2: Label List 생성 (go_mapping에서 추출)
         label_pkl = os.path.join(MODEL_DIR, "labels.pkl")
@@ -171,8 +177,6 @@ def main():
             #     logger.info(f"🔢 총 GO Term 개수: {len(loaded_labels):,}개")
         else:
             logger.error(f"❌ labels.pkl 파일이 생성되지 않았습니다! 경로를 확인하세요: {label_pkl}")
-
-        logger.success("✅ {len(go_mapping)}개 단백질-GO 매핑 로드!")
         
         # Step 3: LMDB 구축 (go_mapping 활용)
         lmdb_path = os.path.join(MODEL_DIR, "train_lmdb")

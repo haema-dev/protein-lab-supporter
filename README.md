@@ -10,8 +10,8 @@ Repository/
 │    ├─ ensemble.py ✅ ensemble 파이프라인 파일
 │    ├─ index.py    ✅ 최초 시작 파일
 │    └─ score.py ❌ 수정하면 안 됨 (실시간 엔드포인트 배포 시에만 사용)
-├─ azureml/
-│    └─ train-job.yml  ⚠️ 환경 변경 시에만 수정 가능
+├─ train-job.yml  ⚠️ 환경 변경 시에만 수정 가능
+├─ index.py    ✅ 최초 시작 파일
 └─ README.md
 ```
 
@@ -21,8 +21,12 @@ Repository/
 
 #### 파일명 고정
 
+- 추가 파일 있을 시에 경로는 `src` 내부에서 작업해야 함.
+
 ```bash
+train.yml
 ensemble.py
+train-job.yml
 index.py
 ```
 

@@ -9,3 +9,4 @@ __pycache__/
 REST_API/
 src/outputs/
 src/index.ipynb
+cafa_eval_scoreset/

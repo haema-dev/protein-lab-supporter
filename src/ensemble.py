@@ -126,58 +126,73 @@ class DiamondESM2Processor:
                "-p", str(self.config['threads']), "--max-target-seqs", "1", "--outfmt", "6"]
         subprocess.run(cmd, check=True)
 
-    
     def final_ensemble(self, result_hits, lmdb_path, esm_preds=None, label_list_path=None):
-        import json # 상단에 없다면 추가
-
-        # 1. 레이블 리스트 로드 (생략 - 기존과 동일)
-        go_labels = []
-        if label_list_path and os.path.exists(label_list_path):
-            with open(str(label_list_path), 'rb') as f: go_labels = pickle.load(f)
+        """
+        앙상블용 고정밀도 Diamond 컴포넌트
+        """
+        import json
+        import pandas as pd
+        from tqdm import tqdm
+        import lmdb
         
-        # 2. Diamond 결과 로드
         columns = ['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 
-                   'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore']
+                'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore']
+        
         try:
             dmnd_df = pd.read_csv(result_hits, sep='\t', names=columns)
+            initial_count = len(dmnd_df)
+            
+            # ✅ 앙상블용 고정밀도 필터
+            pident_threshold = 50
+            dmnd_df = dmnd_df[
+                (dmnd_df['pident'] >= pident_threshold) &  # 조정 가능 (40, 50, 60)
+                (dmnd_df['evalue'] <= 1e-10) &             # 극도로 엄격
+                (dmnd_df['bitscore'] >= 100) &             # 높은 품질
+                (dmnd_df['length'] >= 80)                  # 긴 alignment
+            ]
+            
+            logger.info(f"High-precision filtering (pident≥{pident_threshold}): "
+                    f"{initial_count} -> {len(dmnd_df)} hits ({len(dmnd_df)/initial_count*100:.1f}%)")
+            
             dmnd_dict = {k: v for k, v in dmnd_df.groupby('qseqid')}
+            
         except Exception as e:
-            logger.warning(f"⚠️ Diamond 결과 로드 실패: {e}")
+            logger.warning(f"⚠️ Diamond 결과 로드/필터링 실패: {e}")
             return pd.DataFrame(columns=['Protein Id', 'GO Term Id', 'Prediction'])
-
-        # 3. LMDB 조회 및 앙상블
+        
+        # LMDB 조회
         env = lmdb.open(str(lmdb_path), readonly=True, lock=False)
         final_subs = []
-        alpha = self.config.get('alpha', 0.5)
-
+        
         with env.begin() as txn:
-            for qid, hits in tqdm(dmnd_dict.items(), desc="🚀 Ensemble"):
+            for qid, hits in tqdm(dmnd_dict.items(), desc="High-Precision Diamond"):
                 combined_scores = {}
-
-                # ESM 모델 점수 반영 (생략)
-
-                # [DIAMOND PHASE] JSON 파싱 적용
+                
                 for _, row in hits.iterrows():
-                    # clean_id를 거친 ID(sseqid)로 조회
                     sseqid = self.clean_id(row['sseqid'])
                     val = txn.get(sseqid.encode('utf-8'))
                     
                     if val:
-                        # ✅ 핵심 수정: JSON 로드
                         data = json.loads(val.decode('utf-8'))
                         go_list = data.get('go_terms', [])
                         
                         if go_list:
-                            weight = (1 - alpha) if esm_preds is not None else 1.0
-                            score = (row['pident'] / 100.0) * weight
+                            # ✅ 높은 pident는 높은 신뢰도
+                            confidence = row['pident'] / 100.0
+                            
                             for go_id in go_list:
-                                combined_scores[go_id] = max(combined_scores.get(go_id, 0), score)
-
+                                combined_scores[go_id] = max(
+                                    combined_scores.get(go_id, 0), 
+                                    confidence
+                                )
+                
+                # ✅ 높은 threshold (고정밀도)
                 for go_id, s in combined_scores.items():
-                    if s >= 0.01:
+                    if s >= 0.40:  # 40% 이상 (매우 엄격)
                         final_subs.append([qid, go_id, round(s, 3)])
         
         env.close()
+        logger.info(f"High-precision predictions: {len(final_subs)}")
         return pd.DataFrame(final_subs, columns=['Protein Id', 'GO Term Id', 'Prediction'])
 
     def create_cafa_submission(self, df, team_name, model_num):
