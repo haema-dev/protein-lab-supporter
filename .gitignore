@@ -1,5 +1,5 @@
 # .gitignore
-outputs/
+# 안 쓰는 파일
 checkpoints/
 *.pth
 *.h5
@@ -9,12 +9,14 @@ __pycache__/
 REST_API/
 src/outputs/
 src/index.ipynb
-
+src/score.py
 cafa_eval_scoreset/
 
-src/score.py
+# 결과 폴더
+outputs/
 
-
+# 데이터 자산에서 불러오는 폴더구조
+src/fasta/
 src/h5/
 src/ontology/
 src/tsv/
