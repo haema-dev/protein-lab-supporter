@@ -75,11 +75,12 @@ def main():
     parser.add_argument('--data_path', type=str, required=True, help='dataset 폴더 경로')
     parser.add_argument('--output_dir', type=str, default='./outputs', help='결과 저장 경로')
     parser.add_argument('--threads', type=int, default=14)
-    parser.add_argument('--fs_score', type=int, default=0.99)
+    parser.add_argument('--fs_score', type=float, default=0.99)
+    parser.add_argument('--pident', type=int, default=50)
+    parser.add_argument('--evalue', type=float, default=1e-5)
     # === 필요하면 주석해제 후 사용하기
     # parser.add_argument('--train_batch_size', type=int, default=1024, help='Head 학습 시 배치 크기 (H5 기반이라 크게 가능)')
     # parser.add_argument('--predict_batch_size', type=int, default=2048, help='추론 시 배치 크기')
-    # parser.add_argument('--alpha', type=float, default=0.6, help='ESM2 가중치') 
 
     args = parser.parse_args()
     
@@ -152,10 +153,10 @@ def main():
         'threads': args.threads,
         'output_dir': OUTPUT_DIR,
         'fs_score': args.fs_score,
+        'pident': args.pident,
+        'evalue': args.evalue,
         # 'train_batch_size': args.train_batch_size,
         # 'batch_size': args.predict_batch_size, 
-        # 'alpha': args.alpha,
-        # 'knn_weight': args.knn_weight,        
         # 'embedding_dim': 2560 ### 수정하면 안 됨.
     }
 

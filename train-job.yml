@@ -6,7 +6,9 @@ command: >-
     --data_path ${{inputs.data}} \
     --threads 14 \
     --output_dir ${{outputs.result}} \
-    --fs_score 0.99
+    --fs_score 0.99 \
+    --pident 50  \
+    --evalue 1e-5
 
 inputs:
   data:
