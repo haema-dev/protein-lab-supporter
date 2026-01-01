@@ -11,7 +11,6 @@ Repository/
 │    ├─ index.py    ✅ 최초 시작 파일
 │    └─ score.py ❌ 수정하면 안 됨 (실시간 엔드포인트 배포 시에만 사용)
 ├─ train-job.yml  ⚠️ 환경 변경 시에만 수정 가능
-├─ index.py    ✅ 최초 시작 파일
 └─ README.md
 ```
 
@@ -72,8 +71,8 @@ parser.add_argument('--threads', type=int, default=8)
 
 command: >-
   python input.py
-    --data_path ${{inputs.cafa_data}}
-    --output_dir ${{outputs.model_output}}
+    --data_path ${{inputs.data}}
+    --output_dir ${{outputs.result}}
     --batch_size 1 \
     --alpha 0.6 \
     --knn_weight 0.3 \
@@ -109,7 +108,7 @@ inputs:
 .
 .
 
-compute: azureml:cpu-32core-cluster
+compute: azureml:github
 environment: azureml:ensemble-env@latest
 # Job 실험명과 task 명 지정. 미기재 해도 됨.
 experiment_name: "실험명"

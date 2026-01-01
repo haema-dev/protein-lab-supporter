@@ -32,9 +32,3 @@ jobs:
 
           echo "JOB_NAME=$JOB_NAME" >> $GITHUB_ENV
           echo "✅ Job 제출 완료!"
-
-      # - name: Register Model
-      #   run: |
-      #     az ml model create --name model \
-      #       --path azureml://jobs/${{ env.JOB_NAME }}/outputs/artifacts/paths/outputs/ \
-      #       --type custom_model

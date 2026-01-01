@@ -96,16 +96,24 @@ class DiamondESM2Processor:
 
                 # GO Term 매칭 및 확장
                 terms = set(go_map_data.get(acc_id, []))
+
+                ### 부모전파 O
                 expanded = terms.copy()
                 for t in terms: 
                     expanded.update(ancestor_map.get(t, []))
-                
-                # [사용자 요청 반영] JSON 데이터 구조
                 data_dict = {
-                    "tax_id": acc_id,        # 질문에서 말씀하신 대로 단백질 ID(A0A0C5B5G6)를 넣음
+                    "protein_id": acc_id,    # 질문에서 말씀하신 대로 단백질 ID(A0A0C5B5G6)를 넣음
                     "org_id": org_id,        # 9606 (Taxonomy ID)
                     "org_name": org_name,    # Homo sapiens (종 이름)
                     "go_terms": sorted(list(expanded))
+                }
+
+                ### 부모전파 X
+                data_dict = {
+                    "protein_id": acc_id,    # 질문에서 말씀하신 대로 단백질 ID(A0A0C5B5G6)를 넣음
+                    "org_id": org_id,        # 9606 (Taxonomy ID)
+                    "org_name": org_name,    # Homo sapiens (종 이름)
+                    "go_terms": sorted(list(terms))
                 }
                 
                 # JSON 직렬화
@@ -127,14 +135,8 @@ class DiamondESM2Processor:
         subprocess.run(cmd, check=True)
 
     def final_ensemble(self, result_hits, lmdb_path, esm_preds=None, label_list_path=None):
-        """
-        앙상블용 고정밀도 Diamond 컴포넌트
-        """
-        import json
-        import pandas as pd
-        from tqdm import tqdm
-        import lmdb
-        
+        from collections import defaultdict
+
         columns = ['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 
                 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore']
         
@@ -142,31 +144,28 @@ class DiamondESM2Processor:
             dmnd_df = pd.read_csv(result_hits, sep='\t', names=columns)
             initial_count = len(dmnd_df)
             
-            # ✅ 앙상블용 고정밀도 필터
-            pident_threshold = 90
+            # 1. 필터링: CAFA 기준 및 노이즈 제거를 위한 최적 임계값
             dmnd_df = dmnd_df[
-                (dmnd_df['pident'] >= pident_threshold) &  # 조정 가능 (40, 50, 60)
-                (dmnd_df['evalue'] <= 1e-10) &             # 극도로 엄격
-                (dmnd_df['bitscore'] >= 100) &             # 높은 품질
-                (dmnd_df['length'] >= 80)                  # 긴 alignment
+                (dmnd_df['pident'] >= 40) &    # 서열 유사도 40% 이상
+                (dmnd_df['evalue'] <= 1e-5) &
+                (dmnd_df['bitscore'] >= 50) &
+                (dmnd_df['length'] >= 50)
             ]
             
-            logger.info(f"High-precision filtering (pident≥{pident_threshold}): "
-                    f"{initial_count} -> {len(dmnd_df)} hits ({len(dmnd_df)/initial_count*100:.1f}%)")
-            
+            logger.info(f"Filtering: {initial_count} -> {len(dmnd_df)} hits")
             dmnd_dict = {k: v for k, v in dmnd_df.groupby('qseqid')}
             
         except Exception as e:
-            logger.warning(f"⚠️ Diamond 결과 로드/필터링 실패: {e}")
+            logger.warning(f"❌ Diamond 결과 로드 실패: {e}")
             return pd.DataFrame(columns=['Protein Id', 'GO Term Id', 'Prediction'])
         
-        # LMDB 조회
         env = lmdb.open(str(lmdb_path), readonly=True, lock=False)
         final_subs = []
         
         with env.begin() as txn:
-            for qid, hits in tqdm(dmnd_dict.items(), desc="High-Precision Diamond"):
-                combined_scores = {}
+            for qid, hits in tqdm(dmnd_dict.items(), desc="Processing Diamond Hits"):
+                # {go_id: [confidence1, confidence2, ...]}
+                term_evidence = defaultdict(list)
                 
                 for _, row in hits.iterrows():
                     sseqid = self.clean_id(row['sseqid'])
@@ -174,26 +173,38 @@ class DiamondESM2Processor:
                     
                     if val:
                         data = json.loads(val.decode('utf-8'))
+                        # ✅ 핵심: 여기서 부모 노드를 찾는 로직(Propagation)을 넣지 않고
+                        # DB에 저장된 해당 단백질의 GO Term만 직접 가져옵니다.
                         go_list = data.get('go_terms', [])
                         
                         if go_list:
-                            # ✅ 높은 pident는 높은 신뢰도
+                            # pident 기반 신뢰도 계산
                             confidence = row['pident'] / 100.0
-                            
                             for go_id in go_list:
-                                combined_scores[go_id] = max(
-                                    combined_scores.get(go_id, 0), 
-                                    confidence
-                                )
+                                term_evidence[go_id].append(confidence)
                 
-                # ✅ 높은 threshold (고정밀도)
-                for go_id, s in combined_scores.items():
-                    if s >= 0.40:  # 40% 이상 (매우 엄격)
-                        final_subs.append([qid, go_id, round(s, 3)])
+                # 2. Probabilistic OR를 이용한 점수 통합
+                # 여러 Hit에서 동일한 GO Term이 발견될 경우 확률적으로 합산
+                for go_id, evidences in term_evidence.items():
+                    if len(evidences) == 1:
+                        final_score = evidences[0]
+                    else:
+                        # Formula: 1 - product(1 - p_i)
+                        final_score = 1.0 - np.prod([1.0 - e for e in evidences])
+                    
+                    # 3. 동적 임계값 적용 (증거가 많을수록 더 낮은 점수도 신뢰)
+                    threshold = 0.01 if len(evidences) >= 2 else 0.05
+                    
+                    if final_score >= threshold:
+                        final_subs.append([qid, go_id, round(float(final_score), 3)])
         
         env.close()
-        logger.info(f"High-precision predictions: {len(final_subs)}")
-        return pd.DataFrame(final_subs, columns=['Protein Id', 'GO Term Id', 'Prediction'])
+        
+        result_df = pd.DataFrame(final_subs, columns=['Protein Id', 'GO Term Id', 'Prediction'])
+        logger.info(f"✅ Final predictions (Propagation removed): {len(result_df)}")
+        
+        return result_df
+
 
     def create_cafa_submission(self, df, team_name, model_num):
         out_file = os.path.join(self.output_dir, f"submission_{model_num}.tsv")
