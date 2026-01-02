@@ -226,17 +226,20 @@ def main():
         logger.info("학습한 모델의 예측 수행: {}", esm_preds)
         
         # 3. 최종 앙상블
+        INTERPRO_FILE = find_file(INTERPRO_DIR, ".tsv")
+        FOLDSEEK_FILE = find_file(FOLDSEEK_DIR, ".tsv")
+
         final_df = proc.final_ensemble(
             dmnd_hits=dmnd_hits,
             lmdb_path=lmdb_path,
-            # interpro_path=FOLDSEEK_DIR + 'interpro_submission_8.tsv',
-            # submission_path=INTERPRO_DIR + 'submission_top500_1231_1PM.tsv'
+            interpro_path=INTERPRO_FILE,
+            submission_path=FOLDSEEK_FILE
         )
+
         
         # 4. 결과 저장
         final_save_path = os.path.join(OUTPUT_DIR, "final_results.tsv")
         final_df.to_csv(final_save_path, sep='\t', index=False)
-        proc.create_cafa_submission(final_df, team_name="AZ_Wizard", model_num="1")
         logger.success(f"✅ 추론 완료! 결과 저장됨: {final_save_path}")
 
     except Exception as e:

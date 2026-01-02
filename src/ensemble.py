@@ -14,6 +14,7 @@ from Bio import SeqIO
 from loguru import logger
 from torch.utils.data import Dataset, DataLoader
 import json
+from collections import defaultdict
 
 # [유틸리티]
 def clean_id(full_id):
@@ -28,12 +29,39 @@ class DiamondESM2Processor:
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.output_dir = config['output_dir']
-        self.model_path = os.path.join(self.output_dir, "models", "head_model.pt")
+        self.threads = config.get("threads", 14)        # default 14
+        self.fs_score = config.get("fs_score", 0.99)    # default 0.99
+        self.pident = config.get("pident", 50)          # default 50
+        self.evalue = config.get("evalue", 1e-5)        # default 1e-5
 
     def load_go_mapping(self, tsv_path):
+        """GO ID별 Namespace 정보를 함께 저장하도록 수정"""
+        logger.info(f"📂 GO 매핑 로드 중: {tsv_path}")
         df = pd.read_csv(tsv_path, sep='\t')
-        # ✅ 'protein_id' → 'EntryID', 'go_id' → 'term'
-        return df.groupby('EntryID')['term'].apply(lambda x: list(set(x))).to_dict()
+        
+        # Protein ID -> GO terms 매핑
+        mapping = df.groupby('EntryID')['term'].apply(lambda x: list(set(x))).to_dict()
+        
+        # ✅ 핵심: GO Term -> Namespace 매핑 저장
+        # 컬럼명이 'namespace' 또는 'aspect'인지 확인하세요.
+        if 'namespace' in df.columns:
+            # 🔍 로깅 추가 시작
+            unique_ns = df['namespace'].unique()
+            logger.info(f"🔍 Unique namespaces found: {unique_ns}")
+            logger.info(f"📊 Total GO terms: {len(df['term'].unique())}")
+            # 🔍 로깅 추가 끝
+            self.go_info_dict = pd.Series(df.namespace.values, index=df.term).to_dict()
+        elif 'aspect' in df.columns:
+            # 🔍 로깅 추가 시작
+            unique_ns = df['aspect'].unique()
+            logger.info(f"🔍 Unique aspects found: {unique_ns}")
+            logger.info(f"📊 Total GO terms: {len(df['term'].unique())}")
+            # 🔍 로깅 추가 끝
+            self.go_info_dict = pd.Series(df.aspect.values, index=df.term).to_dict()
+        else:
+            raise ValueError("❌ 'namespace' 또는 'aspect' 컬럼이 없습니다!")
+        
+        return mapping
 
     def generate_label_list(self, tsv_path, output_path):
         df = pd.read_csv(tsv_path, sep='\t')
@@ -126,126 +154,69 @@ class DiamondESM2Processor:
                "-p", str(self.config['threads']), "--max-target-seqs", "1", "--outfmt", "6"]
         subprocess.run(cmd, check=True)
 
-    def final_ensemble(self, dmnd_hits, lmdb_path, esm_preds=None, label_list_path=None):
-        from collections import defaultdict
-
-        columns = ['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 
-                'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore']
+    def final_ensemble(self, dmnd_hits, lmdb_path, interpro_path=None, submission_path=None):
+        if not hasattr(self, 'go_info_dict') or self.go_info_dict is None:
+            raise ValueError("❌ go_info_dict가 없습니다!")
         
+        mf_terms = {term for term, ns in self.go_info_dict.items() 
+                    if ns in ['MFO', 'molecular_function', 'F']}
+        logger.info(f"✅ MF Terms: {len(mf_terms)}")
+        # 1. Diamond 점수 산출 (MF 성능 보존의 핵심)
+        combined_dict = defaultdict(lambda: defaultdict(float))
         try:
-            dmnd_df = pd.read_csv(dmnd_hits, sep='\t', names=columns)
-            initial_count = len(dmnd_df)
-            
-            # 1. 필터링: CAFA 기준 및 노이즈 제거를 위한 최적 임계값
-            dmnd_df = dmnd_df[
-                (dmnd_df['pident'] >= 95) &    # 서열 유사도 95% 이상
-                (dmnd_df['evalue'] <= 1e-10) &
-                (dmnd_df['bitscore'] >= 100) &
-                (dmnd_df['length'] >= 80)
-            ]
-            
-            logger.info(f"Filtering: {initial_count} -> {len(dmnd_df)} hits")
-            dmnd_dict = {k: v for k, v in dmnd_df.groupby('qseqid')}
-            
-        except Exception as e:
-            logger.warning(f"❌ Diamond 결과 로드 실패: {e}")
-            return pd.DataFrame(columns=['Protein Id', 'GO Term Id', 'Prediction'])
-        
-        env = lmdb.open(str(lmdb_path), readonly=True, lock=False)
-        final_subs = []
-        
-        with env.begin() as txn:
-            for qid, hits in tqdm(dmnd_dict.items(), desc="Processing Diamond Hits"):
-                # {go_id: [confidence1, confidence2, ...]}
-                term_evidence = defaultdict(list)
-                
-                for _, row in hits.iterrows():
-                    sseqid = self.clean_id(row['sseqid'])
-                    val = txn.get(sseqid.encode('utf-8'))
-                    
-                    if val:
-                        data = json.loads(val.decode('utf-8'))
-                        # ✅ 핵심: 여기서 부모 노드를 찾는 로직(Propagation)을 넣지 않고
-                        # DB에 저장된 해당 단백질의 GO Term만 직접 가져옵니다.
-                        go_list = data.get('go_terms', [])
-                        
-                        if go_list:
-                            # pident 기반 신뢰도 계산
-                            confidence = row['pident'] / 100.0
-                            for go_id in go_list:
-                                term_evidence[go_id].append(confidence)
-                
-                # 2. Probabilistic OR를 이용한 점수 통합
-                # 여러 Hit에서 동일한 GO Term이 발견될 경우 확률적으로 합산
-                for go_id, evidences in term_evidence.items():
-                    if len(evidences) == 1:
-                        final_score = evidences[0]
-                    else:
-                        # Formula: 1 - product(1 - p_i)
-                        final_score = 1.0 - np.prod([1.0 - e for e in evidences])
-                    
-                    # 3. 동적 임계값 적용 (증거가 많을수록 더 낮은 점수도 신뢰)
-                    threshold = 0.01 if len(evidences) >= 2 else 0.05
-                    
-                    if final_score >= threshold:
-                        final_subs.append([qid, go_id, round(float(final_score), 3)])
-        
-        env.close()
-        
-        result_df = pd.DataFrame(final_subs, columns=['Protein Id', 'GO Term Id', 'Prediction'])
-        logger.info(f"✅ Final predictions (Propagation removed): {len(result_df)}")
-        
-        return result_df
+            dmnd_df = pd.read_csv(dmnd_hits, sep='\t', names=['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore'])
+            dmnd_df = dmnd_df[(dmnd_df['pident'] >= self.pident) & (dmnd_df['evalue'] <= self.evalue)]
 
-
-    def create_cafa_submission(self, df, team_name, model_num):
-        out_file = os.path.join(self.output_dir, f"submission_{model_num}.tsv")
-        with open(out_file, 'w') as f:
-            f.write(f"AUTHOR {team_name}\nMODEL {model_num}\nKEYWORDS Diamond-LMDB\n")
-            df.to_csv(f, sep='\t', index=False, header=False)
-        return out_file
-    
-    def evaluate_diamond_only(self, result_tsv, lmdb_path, label_list_path):
-        """Diamond BLAST 결과만으로 평가 - JSON 대응 버전"""
-        logger.info("📊 [Ablation] Diamond-only evaluation (JSON parsing)...")
-        
-        try:
-            # 결과 로드
-            dmnd_df = pd.read_csv(result_tsv, sep='\t', names=['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore'])
-            dmnd_dict = {k: v for k, v in dmnd_df.groupby('qseqid')}
-            
             env = lmdb.open(str(lmdb_path), readonly=True, lock=False)
-            diamond_subs = []
-            
             with env.begin() as txn:
-                for qid, hits in tqdm(dmnd_dict.items(), desc="🔍 Analyzing Hits"):
-                    comb = {}
-                    for _, row in hits.iterrows():
-                        # ✅ 검색 결과 ID도 clean_id로 정제해서 조회
-                        sseqid = self.clean_id(row['sseqid'])
-                        val = txn.get(sseqid.encode('utf-8'))
-                        
+                for qid, group in dmnd_df.groupby('qseqid'):
+                    term_ev = defaultdict(list)
+                    for _, row in group.iterrows():
+                        val = txn.get(self.clean_id(row['sseqid']).encode('utf-8'))
                         if val:
-                            # ✅ 핵심 수정: JSON 로드
-                            data = json.loads(val.decode('utf-8'))
-                            go_list = data.get('go_terms', [])
-                            
-                            score = row['pident'] / 100.0
-                            for go_id in go_list:
-                                if is_valid_go_term(go_id):
-                                    comb[go_id] = max(comb.get(go_id, 0), score)
-                    
-                    for go_id, f_score in comb.items():
-                        diamond_subs.append([qid, go_id, round(f_score, 3)])
-            
+                            go_list = json.loads(val.decode('utf-8')).get('go_terms', [])
+                            conf = float(row['pident'] / 100.0)
+                            for t in go_list: term_ev[t].append(conf)
+                    for t, evs in term_ev.items():
+                        combined_dict[qid][t] = float(1.0 - np.prod([1.0 - e for e in evs]))
             env.close()
-            diamond_df = pd.DataFrame(diamond_subs, columns=['Protein Id', 'GO Term Id', 'Prediction'])
-            output_file = os.path.join(self.config['output_dir'], "diamond_only_submission.tsv")
-            diamond_df.to_csv(output_file, sep='\t', index=False)
-            
-            logger.success(f"✅ Diamond-only predictions: {len(diamond_subs)}")
-            return diamond_df
-            
         except Exception as e:
-            logger.error(f"❌ Diamond-only evaluation failed: {e}")
-            raise
+            logger.warning(f"Diamond 처리 중 알림: {e}")
+
+        df_diamond = pd.DataFrame([[q, t, s] for q, t_dict in combined_dict.items() for t, s in t_dict.items()], columns=['id', 'term', 'score_dmnd'])
+
+        # ✅ MF Term 분리
+        mf_terms = {term for term, ns in self.go_info_dict.items() 
+                    if ns in ['MFO', 'molecular_function', 'F']}
+
+        # ✅ 헬퍼 함수
+        def load_and_filter(path, col_name):
+            if path and os.path.exists(str(path)):
+                df = pd.read_csv(path, sep='\t', header=None, names=['id', 'term', col_name])
+                if len(df) > 0:
+                    logger.info(f"📊 {col_name} score range: {df[col_name].min():.3f} ~ {df[col_name].max():.3f}")
+                df = df[~df['term'].isin(mf_terms)]
+                return df[df[col_name] >= 0.6]
+            return pd.DataFrame(columns=['id', 'term', col_name])
+
+        # ✅ 데이터 로드
+        df_base = load_and_filter(interpro_path, 'score_base')
+        df_patch = load_and_filter(submission_path, 'score_patch')
+
+        # ✅ 병합 (None 체크)
+        if df_base.empty:
+            merged = df_patch.copy() if not df_patch.empty else pd.DataFrame(columns=['id', 'term'])
+        else:
+            merged = pd.merge(df_base, df_patch, on=['id', 'term'], how='outer')
+        merged = pd.merge(merged, df_diamond, on=['id', 'term'], how='outer')
+
+        # ✅ MAX 기반 앙상블
+        score_cols = ['score_dmnd', 'score_patch', 'score_base']
+        merged['final'] = merged[score_cols].max(axis=1, skipna=True)
+
+        output = merged[['id', 'term', 'final']].dropna(subset=['final']).copy()
+        output['final'] = output['final'].round(3)
+
+        logger.success(f"✅ 앙상블 완료: MF(Diamond) {len(output[output['term'].isin(mf_terms)])} + BP/CC {len(output[~output['term'].isin(mf_terms)])}")
+        return output
+    
