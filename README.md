@@ -12,13 +12,12 @@ Kaggle 의 CAFA6 대회(단백질 기능 예측 대회)에 제출할 모델 중 
 LMDB 데이터 구조 선택<br/>
 
 - Diamond의 헤더 길이 제한 우회<br/>
-- Zero-latency GO-Term 조회 (0.001초)<br/>
-- SQLite 대비 메모리 효율성 우수<br/>
+- Zero-latency GO-Term 조회 (0.1초)<br/>
 
 기술 검증: KNN/FAISS<br/>
 
 - scikit-learn KNN (CPU/RAM 병목) vs FAISS (GPU 가속)<br/>
-- 마이그레이션 이슈: 라벨링 호환 불가, 임베딩 재생성 필요<br/>
+- 마이그레이션 이슈: 라벨링 호환 불가, 임베딩 재생성 필요. 기존 임베딩 type이 float16으로 되어있어 float32 임베딩 필요.<br/>
 - 비용-효율 분석: 마이그레이션 비용 > 성능 이득<br/>
 - 최종 결정: Diamond+LMDB에 리소스 집중<br/>
 
