@@ -155,14 +155,12 @@ class DiamondESM2Processor:
         subprocess.run(cmd, check=True)
 
     def final_ensemble(self, dmnd_hits, lmdb_path, interpro_path=None, submission_path=None):
-        if not hasattr(self, 'go_info_dict') or self.go_info_dict is None:
-            raise ValueError("❌ go_info_dict가 없습니다!")
+        """ ✅ Diamond + LMDB 단독 모드 """
         
-        mf_terms = {term for term, ns in self.go_info_dict.items() 
-                    if ns in ['MFO', 'molecular_function', 'F']}
-        logger.info(f"✅ MF Terms: {len(mf_terms)}")
-        # 1. Diamond 점수 산출 (MF 성능 보존의 핵심)
+        logger.info("🚀 Diamond-only 모드 실행")
+        
         combined_dict = defaultdict(lambda: defaultdict(float))
+        
         try:
             dmnd_df = pd.read_csv(dmnd_hits, sep='\t', names=['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore'])
             dmnd_df = dmnd_df[(dmnd_df['pident'] >= self.pident) & (dmnd_df['evalue'] <= self.evalue)]
@@ -172,51 +170,27 @@ class DiamondESM2Processor:
                 for qid, group in dmnd_df.groupby('qseqid'):
                     term_ev = defaultdict(list)
                     for _, row in group.iterrows():
-                        val = txn.get(self.clean_id(row['sseqid']).encode('utf-8'))
+                        s_id = self.clean_id(row['sseqid'])
+                        val = txn.get(s_id.encode('utf-8'))
                         if val:
-                            go_list = json.loads(val.decode('utf-8')).get('go_terms', [])
+                            data = json.loads(val.decode('utf-8'))
+                            go_list = data.get('go_terms', [])
                             conf = float(row['pident'] / 100.0)
-                            for t in go_list: term_ev[t].append(conf)
+                            for t in go_list:
+                                term_ev[t].append(conf)
                     for t, evs in term_ev.items():
                         combined_dict[qid][t] = float(1.0 - np.prod([1.0 - e for e in evs]))
             env.close()
+            
         except Exception as e:
-            logger.warning(f"Diamond 처리 중 알림: {e}")
+            logger.error(f"❌ Diamond 처리 중 오류: {e}")
+            return pd.DataFrame(columns=['Protein Id', 'GO Term Id', 'Prediction'])
 
-        df_diamond = pd.DataFrame([[q, t, s] for q, t_dict in combined_dict.items() for t, s in t_dict.items()], columns=['id', 'term', 'score_dmnd'])
-
-        # ✅ MF Term 분리
-        mf_terms = {term for term, ns in self.go_info_dict.items() 
-                    if ns in ['MFO', 'molecular_function', 'F']}
-
-        # ✅ 헬퍼 함수
-        def load_and_filter(path, col_name):
-            if path and os.path.exists(str(path)):
-                df = pd.read_csv(path, sep='\t', header=None, names=['id', 'term', col_name])
-                if len(df) > 0:
-                    logger.info(f"📊 {col_name} score range: {df[col_name].min():.3f} ~ {df[col_name].max():.3f}")
-                df = df[~df['term'].isin(mf_terms)]
-                return df[df[col_name] >= 0.6]
-            return pd.DataFrame(columns=['id', 'term', col_name])
-
-        # ✅ 데이터 로드
-        df_base = load_and_filter(interpro_path, 'score_base')
-        df_patch = load_and_filter(submission_path, 'score_patch')
-
-        # ✅ 병합 (None 체크)
-        if df_base.empty:
-            merged = df_patch.copy() if not df_patch.empty else pd.DataFrame(columns=['id', 'term'])
-        else:
-            merged = pd.merge(df_base, df_patch, on=['id', 'term'], how='outer')
-        merged = pd.merge(merged, df_diamond, on=['id', 'term'], how='outer')
-
-        # ✅ MAX 기반 앙상블
-        score_cols = ['score_dmnd', 'score_patch', 'score_base']
-        merged['final'] = merged[score_cols].max(axis=1, skipna=True)
-
-        output = merged[['id', 'term', 'final']].dropna(subset=['final']).copy()
-        output['final'] = output['final'].round(3)
-
-        logger.success(f"✅ 앙상블 완료: MF(Diamond) {len(output[output['term'].isin(mf_terms)])} + BP/CC {len(output[~output['term'].isin(mf_terms)])}")
+        final_results = []
+        for qid, terms in combined_dict.items():
+            for tid, score in terms.items():
+                final_results.append([qid, tid, round(score, 3)])
+        
+        output = pd.DataFrame(final_results, columns=['Protein Id', 'GO Term Id', 'Prediction'])
+        logger.success(f"✅ 예측 완료: {len(output)}건")
         return output
-    
