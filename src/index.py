@@ -246,8 +246,6 @@ def main():
         # final_save_path = os.path.join(OUTPUT_DIR, "final_results.tsv")
         # final_df.to_csv(final_save_path, sep='\t', index=False)
         # logger.success(f"✅ 추론 완료! 결과 저장됨: {final_save_path}")
-        mlflow.log_artifacts(OUTPUT_DIR, artifact_path="outputs")
-        logger.success("✅ MLflow artifacts logged!")
 
     except Exception as e:
         logger.error(f"❌ 추론 중 오류 발생: {e}")
@@ -269,7 +267,7 @@ def main():
 
     logger.success("🏁 CAFA6 통합 파이프라인 종료!")
 
-    # ====== Azure SDK로 artifact 등록 (마지막) ======
+    # ====== Azure SDK로 artifact 등록 ======
     try:
         run = Run.get_context()
         run.upload_folder(name="outputs", path=OUTPUT_DIR)
