@@ -3,7 +3,7 @@ name: 01_Auto_Train_and_Register
 on:
   push:
     paths:
-      - "src/score.py" # 해당 파일의 변경사항이 있을 때 push
+      - "src/**" # 해당 파일의 변경사항이 있을 때 push
 
 jobs:
   train:
