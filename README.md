@@ -1,5 +1,29 @@
 # protein-lab-supporter
 
+## 단백질의 생물학적 기능 예측 (피일럿)
+
+CAFA6 라는 Kaggle의 단백질 기능 예측 대회에 제출할 모델 중 한 파이프라인인 Diamond 파트를 구현
+기간: 2025.12.22 - 2026.01.03
+
+메인 파이프라인: Diamond + LMDB
+
+- Diamond: BLAST 대비 20,000배 가속화
+- 도메인별 특성 분석 (BP/CC 높음, MF 상대적 낮음)
+- 정밀도 임계값 최적화 (0.7 → 0.5)
+
+LMDB 데이터 구조 선택
+
+- Diamond의 헤더 길이 제한 우회
+- Zero-latency GO-Term 조회 (0.001초)
+- SQLite 대비 메모리 효율성 우수
+
+기술 검증: KNN/FAISS
+
+- scikit-learn KNN (CPU/RAM 병목) vs FAISS (GPU 가속)
+- 마이그레이션 이슈: 라벨링 호환 불가, 임베딩 재생성 필요
+- 비용-효율 분석: 마이그레이션 비용 > 성능 이득
+- 최종 결정: Diamond+LMDB에 리소스 집중
+
 ## 폴더구조
 
 ```bash
@@ -140,45 +164,4 @@ Job까지만 돌릴 거면 <span style="color:red;">Run Job</span> 만 주석 �
       #     az ml model create --name model \
       #       --path azureml://jobs/${{ env.JOB_NAME }}/outputs/artifacts/paths/outputs/ \
       #       --type custom_model
-```
-
-<br /><br />
-
-### 엔드포인트 배포 (여긴 아직 신경쓸 필요 x)
-
-score.py에서 필요한 model.py 복사
-
-```python
-# train. py
-
-# torch.save 바로 아래에 train. py ✅ 추가
-model_py_path = Path(__file__).parent / 'model.py'
-if model_py_path.exists():
-    shutil.copy(str(model_py_path), str(output_dir / 'model.py'))
-    print(f"✅ model.py copied to {output_dir / 'model.py'}")
-```
-
-#### 가중치 객체 변수 `model_config` 로 고정
-
-```python
-# train. py
-
-# ==================== 모델 생성 ====================
-print("\n" + "=" * 70)
-print("🏗️ 모델 생성")
-print("=" * 70)
-
-model_config = ModelConfig(
-    embedding_dim=args.embedding_dim,
-    num_classes=num_go_terms,
-    conv_channels=args.conv_channels,
-    kernel_sizes=args.kernel_sizes,
-    fc_dims=args.fc_dims,
-    dropout=args.dropout,
-    conv_dropout_ratio=args.conv_dropout_ratio,
-    use_residual=args.use_residual,
-    pooling_mode=args.pooling_mode,
-    use_batch_norm=True,
-    activation='relu'
-)
 ```
