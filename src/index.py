@@ -1,16 +1,16 @@
-from azureml.core.run import Run
 import os
 import argparse
-import subprocess
 import torch
 import pandas as pd
 import pickle
-from loguru import logger
 import traceback
 import glob
 import math
+from loguru import logger
 
-# [1] 모듈 로드 (기존 ensemble.py에 DiamondESM2Processor가 있다고 가정)
+# azure module
+from azureml.core.run import Run
+# external my module
 from ensemble import DiamondESM2Processor
 
 
@@ -75,10 +75,13 @@ def main():
     # Azure ML 경로 설정
     parser.add_argument('--data_path', type=str, required=True, help='dataset 폴더 경로')
     parser.add_argument('--output_dir', type=str, default='./outputs', help='결과 저장 경로')
+    
+    # Diamond
     parser.add_argument('--threads', type=int, default=14)
-    parser.add_argument('--fs_score', type=float, default=0.99)
     parser.add_argument('--pident', type=int, default=50)
     parser.add_argument('--evalue', type=float, default=1e-5)
+    # Foldseek
+    parser.add_argument('--fs_score', type=float, default=0.99)
     # === 필요하면 주석해제 후 사용하기
     # parser.add_argument('--train_batch_size', type=int, default=1024, help='Head 학습 시 배치 크기 (H5 기반이라 크게 가능)')
     # parser.add_argument('--predict_batch_size', type=int, default=2048, help='추론 시 배치 크기')
@@ -234,17 +237,17 @@ def main():
         INTERPRO_FILE = find_file(INTERPRO_DIR, ".tsv")
         FOLDSEEK_FILE = find_file(FOLDSEEK_DIR, ".tsv")
 
-        # final_df = proc.final_ensemble(
-        #     dmnd_hits=dmnd_hits,
-        #     lmdb_path=lmdb_path,
-        #     interpro_path=INTERPRO_FILE,
-        #     submission_path=FOLDSEEK_FILE
-        # )
+        final_df = proc.final_ensemble(
+            dmnd_hits=dmnd_hits,
+            lmdb_path=lmdb_path,
+            interpro_path=INTERPRO_FILE,
+            submission_path=FOLDSEEK_FILE
+        )
 
         # 4. 결과 저장
-        # final_save_path = os.path.join(OUTPUT_DIR, "final_results.tsv")
-        # final_df.to_csv(final_save_path, sep='\t', index=False)
-        # logger.success(f"✅ 추론 완료! 결과 저장됨: {final_save_path}")
+        final_save_path = os.path.join(OUTPUT_DIR, "final_results.tsv")
+        final_df.to_csv(final_save_path, sep='\t', index=False)
+        logger.success(f"✅ 추론 완료! 결과 저장됨: {final_save_path}")
 
     except Exception as e:
         logger.error(f"❌ 추론 중 오류 발생: {e}")
