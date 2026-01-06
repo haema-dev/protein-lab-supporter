@@ -233,18 +233,18 @@ def main():
         INTERPRO_FILE = find_file(INTERPRO_DIR, ".tsv")
         FOLDSEEK_FILE = find_file(FOLDSEEK_DIR, ".tsv")
 
-        final_df = proc.final_ensemble(
-            dmnd_hits=dmnd_hits,
-            lmdb_path=lmdb_path,
-            interpro_path=INTERPRO_FILE,
-            submission_path=FOLDSEEK_FILE
-        )
+        # final_df = proc.final_ensemble(
+        #     dmnd_hits=dmnd_hits,
+        #     lmdb_path=lmdb_path,
+        #     interpro_path=INTERPRO_FILE,
+        #     submission_path=FOLDSEEK_FILE
+        # )
 
         
         # 4. 결과 저장
-        final_save_path = os.path.join(OUTPUT_DIR, "final_results.tsv")
-        final_df.to_csv(final_save_path, sep='\t', index=False)
-        logger.success(f"✅ 추론 완료! 결과 저장됨: {final_save_path}")
+        # final_save_path = os.path.join(OUTPUT_DIR, "final_results.tsv")
+        # final_df.to_csv(final_save_path, sep='\t', index=False)
+        # logger.success(f"✅ 추론 완료! 결과 저장됨: {final_save_path}")
 
     except Exception as e:
         logger.error(f"❌ 추론 중 오류 발생: {e}")
