@@ -1,4 +1,4 @@
-import mlflow
+from azureml.core.run import Run
 import os
 import argparse
 import subprocess
@@ -84,12 +84,6 @@ def main():
     # parser.add_argument('--predict_batch_size', type=int, default=2048, help='추론 시 배치 크기')
 
     args = parser.parse_args()
-
-    
-    # ====== MLflow 초기화 (맨 처음) ======
-    # 환경변수에서 가져오기
-    experiment_name = os.getenv("EXPERIMENT_NAME", "Diamond_Github")
-    mlflow.set_experiment(experiment_name)
     
     # ================== 1. 경로 및 환경 설정 ==================
     # Root DIR 설정
@@ -275,12 +269,13 @@ def main():
 
     logger.success("🏁 CAFA6 통합 파이프라인 종료!")
 
-    # ====== MLflow에 최종 결과 업로드 ======
+    # ====== Azure SDK로 artifact 등록 (마지막) ======
     try:
-        mlflow.log_artifacts(OUTPUT_DIR, artifact_path="outputs")
-        logger.success("✅ All outputs uploaded to MLflow!")
+        run = Run.get_context()
+        run.upload_folder(name="outputs", path=OUTPUT_DIR)
+        logger.success("✅ Outputs uploaded to Azure ML!")
     except Exception as e:
-        logger.warning(f"⚠️ MLflow upload failed: {e}")
+        logger.warning(f"⚠️ Upload failed: {e}")
 
 if __name__ == "__main__":
     main()
