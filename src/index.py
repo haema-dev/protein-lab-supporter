@@ -1,3 +1,4 @@
+import mlflow
 import os
 import argparse
 import subprocess
@@ -245,6 +246,8 @@ def main():
         # final_save_path = os.path.join(OUTPUT_DIR, "final_results.tsv")
         # final_df.to_csv(final_save_path, sep='\t', index=False)
         # logger.success(f"✅ 추론 완료! 결과 저장됨: {final_save_path}")
+        mlflow.log_artifacts(OUTPUT_DIR, artifact_path="outputs")
+        logger.success("✅ MLflow artifacts logged!")
 
     except Exception as e:
         logger.error(f"❌ 추론 중 오류 발생: {e}")

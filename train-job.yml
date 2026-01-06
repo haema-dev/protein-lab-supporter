@@ -20,7 +20,7 @@ outputs:
   outputs:
     type: uri_folder
     # Job 완료 후 자동 업로드
-    mode: rw_mount
+    mode: upload
 
 compute: azureml:github
 environment: azureml:ensemble-env@latest
