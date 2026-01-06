@@ -2,27 +2,27 @@
 
 ## 단백질의 생물학적 기능 예측 (피일럿)
 
-CAFA6 라는 Kaggle의 단백질 기능 예측 대회에 제출할 모델 중 한 파이프라인인 Diamond 파트를 구현
-기간: 2025.12.22 - 2026.01.03
+Kaggle 의 CAFA6 대회(단백질 기능 예측 대회)에 제출할 모델 중 한 파이프라인인 Diamond 파트를 구현<br/>
+기간: 2025.12.22 - 2026.01.03<br/>
+<br/>
+메인 파이프라인: Diamond + LMDB<br/>
 
-메인 파이프라인: Diamond + LMDB
+- Diamond: BLAST 대비 20,000배 가속화<br/>
+- 도메인별 특성 분석 (BP/CC 높음, MF 상대적 낮음)<br/>
+- 정밀도 임계값 최적화 (0.7 → 0.5)<br/>
 
-- Diamond: BLAST 대비 20,000배 가속화
-- 도메인별 특성 분석 (BP/CC 높음, MF 상대적 낮음)
-- 정밀도 임계값 최적화 (0.7 → 0.5)
+LMDB 데이터 구조 선택<br/>
 
-LMDB 데이터 구조 선택
+- Diamond의 헤더 길이 제한 우회<br/>
+- Zero-latency GO-Term 조회 (0.001초)<br/>
+- SQLite 대비 메모리 효율성 우수<br/>
 
-- Diamond의 헤더 길이 제한 우회
-- Zero-latency GO-Term 조회 (0.001초)
-- SQLite 대비 메모리 효율성 우수
+기술 검증: KNN/FAISS<br/>
 
-기술 검증: KNN/FAISS
-
-- scikit-learn KNN (CPU/RAM 병목) vs FAISS (GPU 가속)
-- 마이그레이션 이슈: 라벨링 호환 불가, 임베딩 재생성 필요
-- 비용-효율 분석: 마이그레이션 비용 > 성능 이득
-- 최종 결정: Diamond+LMDB에 리소스 집중
+- scikit-learn KNN (CPU/RAM 병목) vs FAISS (GPU 가속)<br/>
+- 마이그레이션 이슈: 라벨링 호환 불가, 임베딩 재생성 필요<br/>
+- 비용-효율 분석: 마이그레이션 비용 > 성능 이득<br/>
+- 최종 결정: Diamond+LMDB에 리소스 집중<br/>
 
 ## 폴더구조
 
