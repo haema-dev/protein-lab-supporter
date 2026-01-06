@@ -89,10 +89,10 @@ def main():
     DATASET_DIR = args.data_path
     OUTPUT_DIR = args.output_dir
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    test_path = os.path.join(OUTPUT_DIR, "test.txt")
-    with open(test_path, "w") as f:
-        f.write("abcd")
-    logger.info(f"📝 test.txt 생성됨: {os.path.abspath(test_path)}")
+    # test_path = os.path.join(OUTPUT_DIR, "test.txt")
+    # with open(test_path, "w") as f:
+    #     f.write("진짜 마지막")
+    # logger.info(f"📝 test.txt 생성됨: {os.path.abspath(test_path)}")
     
     logger.info(f"📂 Input/Output 디렉토리 설정 완료:")
     logger.info(f"   - Input Dataset Root: {os.path.abspath(DATASET_DIR)}")

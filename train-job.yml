@@ -5,7 +5,7 @@ command: >-
   python index.py \
     --data_path ${{inputs.data}} \
     --threads 14 \
-    --output_dir ${{outputs.result}} \
+    --output_dir ${{outputs.outputs}} \
     --fs_score 0.99 \
     --pident 50  \
     --evalue 1e-5
@@ -17,7 +17,7 @@ inputs:
     mode: ro_mount
 
 outputs:
-  result:
+  outputs:
     type: uri_folder
     # Job 완료 후 자동 업로드
     mode: upload
