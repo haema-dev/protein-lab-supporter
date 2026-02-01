@@ -21,7 +21,7 @@ LMDB 데이터 구조 선택<br/>
 - 비용-효율 분석: 마이그레이션 비용 > 성능 이득<br/>
 - 최종 결정: Diamond+LMDB에 리소스 집중<br/>
 <br />
-PPT : https://drive.google.com/file/d/1_V0Fp2_5ILDj_UJei_7j1eTNe11Hq4h2/view?usp=sharing
+PPT : https://drive.google.com/file/d/1-sY45WIEnMzpKvRdCF4pzpu1ENPN3E7Z/view?usp=sharing
 
 ## 폴더구조
 
